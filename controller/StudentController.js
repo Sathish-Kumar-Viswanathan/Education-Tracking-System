@@ -1,45 +1,43 @@
 import StudentModel from "../models/StudentModels.js";
-import { studentMessages } from "../utils/StudentMessages.js";
+import { Messages } from "../utils/Messages.js";
 import { statusCodes } from "../utils/StatusCodes.js";
 
 export const createStudent = async (req, res) => {
   try {
     const {
-      FirstName,
-      LastName,
-      DateOfBirth,
-      Email,
-      FatherName,
-      FatherPhone,
-      RollNumber,
-      Department,
-      YearOfStudy,
-      Address,
-      Password,
+      firstName,
+      lastName,
+      dateOfBirth,
+      fatherName,
+      fatherPhone,
+      rollNumber,
+      department,
+      yearOfStudy,
+      address,
+      userId,
     } = req.body;
 
     const newStudent = await StudentModel.create({
-      FirstName,
-      LastName,
-      DateOfBirth,
-      Email,
-      FatherName,
-      FatherPhone,
-      RollNumber,
-      Department,
-      YearOfStudy,
-      Address,
-      Password,
+      firstName,
+      lastName,
+      dateOfBirth,
+      fatherName,
+      fatherPhone,
+      rollNumber,
+      department,
+      yearOfStudy,
+      address,
+      userId,
     });
 
     res.status(statusCodes.CREATED).json({
-      message: studentMessages.StudentCreatedSuccessfully,
+      message: Messages.StudentCreatedSuccessfully,
       student: newStudent,
     });
   } catch (error) {
     res
       .status(statusCodes.INTERNAL_SERVER_ERROR)
-      .json({ message: studentMessages.ErrorRetrievingStudents, error });
+      .json({ message: Messages.ErrorRetrievingStudents, error });
   }
 };
 
@@ -51,14 +49,14 @@ export const getAllStudents = async (req, res) => {
     if (AllStudents.length === 0) {
       return res
         .status(statusCodes.NOT_FOUND)
-        .json({ message: studentMessages.NoStudentsFound });
+        .json({ message: Messages.NoStudentsFound });
     }
 
     res.status(statusCodes.SUCCESS).json(AllStudents);
   } catch (error) {
     res
       .status(statusCodes.INTERNAL_SERVER_ERROR)
-      .json({ message: studentMessages.ErrorRetrievingStudents, error });
+      .json({ message: Messages.ErrorRetrievingStudents, error });
   }
 };
 

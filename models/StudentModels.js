@@ -4,69 +4,64 @@ const Schema = mongoose.Schema;
 
 const StudentSchema = new Schema(
   {
-    FirstName: {
+    userId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Users",
+      required: true,
+    },
+
+    firstName: {
       type: String,
       required: true,
     },
 
-    LastName: {
+    lastName: {
       type: String,
       required: true,
     },
 
-    DateOfBirth: {
+    dateOfBirth: {
       type: Date,
       required: true,
     },
 
-    Email: {
+    fatherName: {
+      type: String,
+      required: true,
+    },
+
+    fatherPhone: {
+      type: String,
+      required: true,
+    },
+
+    rollNumber: {
       type: String,
       required: true,
       unique: true,
     },
 
-    FatherName: {
+    department: {
       type: String,
       required: true,
     },
 
-    FatherPhone: {
+    yearOfStudy: {
       type: String,
       required: true,
     },
 
-    RollNumber: {
-      type: String,
-      required: true,
-      unique: true,
-    },
-
-    Department: {
+    address: {
       type: String,
       required: true,
     },
 
-    YearOfStudy: {
-      type: String,
-      required: true,
-    },
-
-    Address: {
-      type: String,
-      required: true,
-    },
-
-    Password: {
-      type: String,
-      required: true,
-    },
-
-    IsDelete: {
+    isDelete: {
       type: Boolean,
       default: false,
     },
 
-    UserType: {
+    userType: {
       type: String,
       default: "Student",
     },
