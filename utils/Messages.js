@@ -4,4 +4,6 @@ export const Messages = {
   StudentCreatedSuccessfully: "Student created successfully",
   INTERNAL_SERVER_ERROR: "Internal server error",
   UserCreatedSuccessfully: "User created successfully",
+  StaffCreatedSuccessfully: "Staff created successfully",
+  StaffIsNotAvailable: "No Staff is Available",
 };
