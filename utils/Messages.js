@@ -6,4 +6,5 @@ export const Messages = {
   UserCreatedSuccessfully: "User created successfully",
   StaffCreatedSuccessfully: "Staff created successfully",
   StaffIsNotAvailable: "No Staff is Available",
+  EmailAlreadyRegistered: "Email already registered",
 };
