@@ -37,8 +37,13 @@ export const CreateUser = async (req, res) => {
       user: newUser,
     });
   } catch (error) {
+    if (error.code === 11000) {
+      return res.status(statusCodes.CONFLICT).json({
+        message: Messages.EmailAlreadyRegistered,
+      });
+    }
     res
       .status(statusCodes.INTERNAL_SERVER_ERROR)
-      .json({ message: Messages.INTERNAL_SERVER_ERROR, error });
+      .json({ message: Messages.INTERNAL_SERVER_ERROR, error: error.message });
   }
 };
