@@ -8,4 +8,5 @@ export const Messages = {
   StaffIsNotAvailable: "No Staff is Available",
   EmailAlreadyRegistered: "Email already registered",
   InvalidCredentials: "Invalid Email or Password",
+  LoginSuccessfully: "Login Successfull.",
 };

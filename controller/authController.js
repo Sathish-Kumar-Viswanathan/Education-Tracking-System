@@ -41,6 +41,7 @@ export const usersLogin = async (req, res) => {
     return res.status(statusCodes.SUCCESS).json({
       message: Messages.LoginSuccessfully,
       token: generateToken,
+      role: checkCredentials.role,
     });
   } catch (error) {
     res.status(statusCodes.INTERNAL_SERVER_ERROR).json({
