@@ -7,3 +7,5 @@ const router = express.Router();
 router.get("/", GetAllStaffs)
 
 router.post("/create-staff", CreateStaff)
+
+export default router;

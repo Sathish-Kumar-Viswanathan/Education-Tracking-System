@@ -8,6 +8,7 @@ import timeTableRouter from "./routes/timeTableRouter.js";
 import cors from "cors";
 import bcrypt from "bcrypt";
 import UserModel from "./models/UsersModels.js";
+import subjectRouter from "./routes/subjectRouter.js";
 dotenv.config();
 const PORT = process.env.PORT;
 
@@ -20,10 +21,11 @@ app.use("/api/students", StudentRouters);
 app.use("/api/users", UsersRouters);
 app.use("/api/auth", authRouter);
 app.use("/api/time-table", timeTableRouter);
+app.use("/api/subjects", subjectRouter);
 
 const adminUser = {
   email: "admin@gmail.com",
-  password: "admin123",
+  password: "Admin@123",
   role: "admin",
 };
 const createAdminUser = async (req, res) => {
