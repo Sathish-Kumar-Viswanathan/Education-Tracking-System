@@ -6,6 +6,8 @@ import UsersRouters from "./routes/UsersRouters.js";
 import authRouter from "./routes/authRouter.js";
 import timeTableRouter from "./routes/timeTableRouter.js";
 import cors from "cors";
+import bcrypt from "bcrypt";
+import UserModel from "./models/UsersModels.js";
 dotenv.config();
 const PORT = process.env.PORT;
 
@@ -19,6 +21,36 @@ app.use("/api/users", UsersRouters);
 app.use("/api/auth", authRouter);
 app.use("/api/time-table", timeTableRouter);
 
+const adminUser = {
+  email: "admin@gmail.com",
+  password: "admin123",
+  role: "admin",
+};
+const createAdminUser = async (req, res) => {
+  try {
+    const { email, password, role } = adminUser;
+    const genSalt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, genSalt);
+    const newUser = await UserModel.create({
+      email,
+      password: hashedPassword,
+      role,
+    });
+
+    res.status(201).json({
+      message: "Admin user created successfully",
+      user: newUser,
+    });
+  } catch (error) {
+    if (error.code === 11000) {
+      console.log("Admin user already exists");
+      return;
+    } else {
+      console.error("Error creating admin user:", error);
+    }
+  }
+};
+
 app.listen(PORT, async () => {
   await mongoose
     .connect(process.env.MONGO_URI)
@@ -26,6 +58,7 @@ app.listen(PORT, async () => {
       console.log(
         `Database is connected and Server is running on port ${PORT}`,
       );
+      createAdminUser();
     })
     .catch((error) => {
       console.log("Database connection failed", error);
