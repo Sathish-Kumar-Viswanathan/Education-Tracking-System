@@ -27,16 +27,18 @@ const adminUser = {
   email: "admin@gmail.com",
   password: "Admin@123",
   role: "admin",
+  name: "Admin User",
 };
 const createAdminUser = async (req, res) => {
   try {
-    const { email, password, role } = adminUser;
+    const { email, password, role, name } = adminUser;
     const genSalt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, genSalt);
     const newUser = await UserModel.create({
       email,
       password: hashedPassword,
       role,
+      name,
     });
 
     res.status(201).json({

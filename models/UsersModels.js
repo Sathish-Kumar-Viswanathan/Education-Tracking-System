@@ -3,6 +3,10 @@ import mongoose from "mongoose";
 const schema = mongoose.Schema;
 const UsersSchema = new schema(
   {
+    name: {
+      type: String,
+      required: true,
+    },
     email: {
       type: String,
       required: true,
@@ -22,7 +26,7 @@ const UsersSchema = new schema(
       default: false,
     },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 const UserModel = mongoose.model("Users", UsersSchema);

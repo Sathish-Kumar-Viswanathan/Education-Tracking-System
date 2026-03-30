@@ -24,13 +24,14 @@ export const GetAllUsers = async (req, res) => {
 
 export const CreateUser = async (req, res) => {
   try {
-    const { email, password, role } = req.body;
+    const { email, password, role, name } = req.body;
     const genSalt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, genSalt);
     const newUser = await UserModel.create({
       email,
       password: hashedPassword,
       role,
+      name,
     });
     res.status(statusCodes.CREATED).json({
       message: Messages.UserCreatedSuccessfully,
