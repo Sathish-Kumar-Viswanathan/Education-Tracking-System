@@ -3,8 +3,8 @@ import Subject from "../models/subjectModels.js";
 // Create a new subject
 export const CreateSubject = async (req, res) => {
   try {
-    const { name } = req.body;
-    const subject = new Subject({ subjectName: name });
+    const { name, createdBy } = req.body;
+    const subject = new Subject({ subjectName: name, createdBy });
     await subject.save();
     res.status(201).json(subject);
   } catch (error) {

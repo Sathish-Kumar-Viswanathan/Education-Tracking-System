@@ -6,7 +6,7 @@ import bcrypt from "bcrypt";
 export const GetAllUsers = async (req, res) => {
   // Logic to get all users from the database
   try {
-    const AllUsers = await UserModel.find({ isDelete: false });
+    const AllUsers = await UserModel.find();
 
     if (AllUsers.length === 0) {
       return res
@@ -14,7 +14,9 @@ export const GetAllUsers = async (req, res) => {
         .json({ message: Messages.NotFound });
     }
 
-    res.status(statusCodes.SUCCESS).json(AllUsers);
+    res
+      .status(statusCodes.SUCCESS)
+      .json({ users: AllUsers, totalCount: AllUsers.length });
   } catch (error) {
     res
       .status(statusCodes.INTERNAL_SERVER_ERROR)
@@ -46,5 +48,68 @@ export const CreateUser = async (req, res) => {
     res
       .status(statusCodes.INTERNAL_SERVER_ERROR)
       .json({ message: Messages.INTERNAL_SERVER_ERROR, error: error.message });
+  }
+};
+
+export const GetStaffUsers = async (req, res) => {
+  // Logic to get all staff users from the database
+  try {
+    const AllUsers = await UserModel.find({ role: "staff" });
+
+    if (AllUsers.length === 0) {
+      return res
+        .status(statusCodes.NOT_FOUND)
+        .json({ message: Messages.NotFound });
+    }
+
+    res
+      .status(statusCodes.SUCCESS)
+      .json({ users: AllUsers, totalCount: AllUsers.length });
+  } catch (error) {
+    res
+      .status(statusCodes.INTERNAL_SERVER_ERROR)
+      .json({ Messages: Messages.INTERNAL_SERVER_ERROR, error });
+  }
+};
+
+export const GetAdminUsers = async (req, res) => {
+  // Logic to get all admin users from the database
+  try {
+    const AllUsers = await UserModel.find({ role: "admin" });
+
+    if (AllUsers.length === 0) {
+      return res
+        .status(statusCodes.NOT_FOUND)
+        .json({ message: Messages.NotFound });
+    }
+
+    res
+      .status(statusCodes.SUCCESS)
+      .json({ users: AllUsers, totalCount: AllUsers.length });
+  } catch (error) {
+    res
+      .status(statusCodes.INTERNAL_SERVER_ERROR)
+      .json({ Messages: Messages.INTERNAL_SERVER_ERROR, error });
+  }
+};
+
+export const GetStudentUsers = async (req, res) => {
+  // Logic to get all student users from the database
+  try {
+    const AllUsers = await UserModel.find({ role: "student" });
+
+    if (AllUsers.length === 0) {
+      return res
+        .status(statusCodes.NOT_FOUND)
+        .json({ message: Messages.NotFound });
+    }
+
+    res
+      .status(statusCodes.SUCCESS)
+      .json({ users: AllUsers, totalCount: AllUsers.length });
+  } catch (error) {
+    res
+      .status(statusCodes.INTERNAL_SERVER_ERROR)
+      .json({ Messages: Messages.INTERNAL_SERVER_ERROR, error });
   }
 };

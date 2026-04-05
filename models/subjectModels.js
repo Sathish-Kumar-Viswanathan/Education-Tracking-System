@@ -7,9 +7,13 @@ const subjectSchema = new mongoose.Schema(
       required: true,
       trim: true,
     },
-    isDelte: {
+    isDelete: {
       type: Boolean,
       default: false,
+    },
+    createdBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
     },
   },
   {
