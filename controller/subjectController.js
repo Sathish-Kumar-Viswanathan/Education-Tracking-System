@@ -74,3 +74,47 @@ export const DeleteSubject = async (req, res) => {
       .json({ message: "Internal Server Error", error: error.message });
   }
 };
+
+// Restore subject
+export const RestoreSubject = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const subject = await Subject.findByIdAndUpdate(
+      id,
+      { isDelete: false },
+      { new: true },
+    );
+    if (!subject) {
+      return res.status(404).json({ message: "Subject not found" });
+    }
+    res.status(200).json({ message: "Subject restored successfully" });
+  } catch (error) {
+    res
+      .status(500)
+      .json({ message: "Internal Server Error", error: error.message });
+  }
+};
+
+// Update subject
+export const UpdateSubject = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name } = req.body;
+
+    const subject = await Subject.findByIdAndUpdate(
+      id,
+      { subjectName: name },
+      { new: true },
+    );
+
+    if (!subject) {
+      return res.status(404).json({ message: "Subject not found" });
+    }
+
+    res.status(200).json({ message: "Subject updated successfully", subject });
+  } catch (error) {
+    res
+      .status(500)
+      .json({ message: "Internal Server Error", error: error.message });
+  }
+};

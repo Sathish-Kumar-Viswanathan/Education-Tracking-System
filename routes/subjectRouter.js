@@ -3,6 +3,8 @@ import {
   GetAllSubjects,
   CreateSubject,
   DeleteSubject,
+  RestoreSubject,
+  UpdateSubject,
 } from "../controller/subjectController.js";
 
 const router = express.Router();
@@ -11,5 +13,7 @@ const router = express.Router();
 router.get("/", GetAllSubjects);
 router.post("/create-subject", CreateSubject);
 router.delete("/delete/:id", DeleteSubject);
+router.put("/restore/:id", RestoreSubject);
+router.put("/update/:id", UpdateSubject);
 
 export default router;

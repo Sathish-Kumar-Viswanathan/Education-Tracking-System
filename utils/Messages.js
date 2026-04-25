@@ -9,4 +9,10 @@ export const Messages = {
   EmailAlreadyRegistered: "Email already registered",
   InvalidCredentials: "Invalid Email or Password",
   LoginSuccessfully: "Login Successfull.",
+  UserDeletedSuccessfully: "User deleted successfully",
+  UserRestoredSuccessfully: "User restored successfully",
+  UserNotFound: "User not found",
+  SubjectDeletedSuccessfully: "Subject deleted successfully",
+  SubjectRestoredSuccessfully: "Subject restored successfully",
+  SubjectNotFound: "Subject not found",
 };
