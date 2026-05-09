@@ -21,6 +21,20 @@ const UsersSchema = new schema(
       required: true,
       enum: ["admin", "student", "staff"],
     },
+    rollNumber: {
+      type: String,
+      default: null,
+      sparse: true,
+      unique: true,
+    },
+    yearOfStudy: {
+      type: String,
+      default: null,
+    },
+    department: {
+      type: String,
+      default: null,
+    },
     isDelete: {
       type: Boolean,
       default: false,

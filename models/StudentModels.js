@@ -12,27 +12,57 @@ const StudentSchema = new Schema(
 
     firstName: {
       type: String,
-      required: true,
+      default: "",
     },
 
     lastName: {
       type: String,
-      required: true,
+      default: "",
     },
 
     dateOfBirth: {
       type: Date,
-      required: true,
+      default: null,
     },
 
     fatherName: {
       type: String,
-      required: true,
+      default: "",
     },
 
     fatherPhone: {
       type: String,
+      default: "",
+    },
+
+    motherName: {
+      type: String,
+      default: "",
+    },
+
+    motherPhone: {
+      type: String,
+      default: "",
+    },
+
+    fatherOccupation: {
+      type: String,
+      default: "",
+    },
+
+    motherOccupation: {
+      type: String,
+      default: "",
+    },
+
+    email: {
+      type: String,
       required: true,
+    },
+
+    phoneNumber: {
+      type: String,
+      default: "",
     },
 
     rollNumber: {
@@ -53,7 +83,22 @@ const StudentSchema = new Schema(
 
     address: {
       type: String,
-      required: true,
+      default: "",
+    },
+
+    tenthMarkPercentage: {
+      type: Number,
+      default: 0,
+    },
+
+    twelfthMarkPercentage: {
+      type: Number,
+      default: 0,
+    },
+
+    ugMarkPercentage: {
+      type: Number,
+      default: 0,
     },
 
     isDelete: {
@@ -66,7 +111,7 @@ const StudentSchema = new Schema(
       default: "Student",
     },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 const StudentModel = mongoose.model("Student", StudentSchema);

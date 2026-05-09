@@ -9,6 +9,9 @@ import cors from "cors";
 import bcrypt from "bcrypt";
 import UserModel from "./models/UsersModels.js";
 import subjectRouter from "./routes/subjectRouter.js";
+import assignmentRouter from "./routes/assignmentRouter.js";
+import attendanceRouter from "./routes/attendanceRouter.js";
+import courseRouter from "./routes/courseRouter.js";
 dotenv.config();
 const PORT = process.env.PORT;
 
@@ -22,6 +25,9 @@ app.use("/api/users", UsersRouters);
 app.use("/api/auth", authRouter);
 app.use("/api/time-table", timeTableRouter);
 app.use("/api/subjects", subjectRouter);
+app.use("/api/assignments", assignmentRouter);
+app.use("/api/attendance", attendanceRouter);
+app.use("/api/courses", courseRouter);
 
 const adminUser = {
   email: "admin@gmail.com",

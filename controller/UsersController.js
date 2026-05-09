@@ -26,7 +26,23 @@ export const GetAllUsers = async (req, res) => {
 
 export const CreateUser = async (req, res) => {
   try {
-    const { email, password, role, name } = req.body;
+    const { email, password, role, name, rollNumber, yearOfStudy, department } =
+      req.body;
+
+    // Validate rollNumber for student role
+    if (role === "student" && !rollNumber?.trim()) {
+      return res.status(statusCodes.BAD_REQUEST).json({
+        message: "Roll number is required for student role",
+      });
+    }
+
+    // Validate yearOfStudy for student role
+    if (role === "student" && !yearOfStudy?.trim()) {
+      return res.status(statusCodes.BAD_REQUEST).json({
+        message: "Year of study is required for student role",
+      });
+    }
+
     const genSalt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, genSalt);
     const newUser = await UserModel.create({
@@ -34,6 +50,9 @@ export const CreateUser = async (req, res) => {
       password: hashedPassword,
       role,
       name,
+      rollNumber: role === "student" ? rollNumber : null,
+      yearOfStudy: role === "student" ? yearOfStudy : null,
+      department: role === "student" ? department : null,
     });
     res.status(statusCodes.CREATED).json({
       message: Messages.UserCreatedSuccessfully,
@@ -41,6 +60,11 @@ export const CreateUser = async (req, res) => {
     });
   } catch (error) {
     if (error.code === 11000) {
+      if (error.keyPattern.rollNumber) {
+        return res.status(statusCodes.CONFLICT).json({
+          message: "Roll number already exists",
+        });
+      }
       return res.status(statusCodes.CONFLICT).json({
         message: Messages.EmailAlreadyRegistered,
       });
@@ -180,7 +204,7 @@ export const UpdateUser = async (req, res) => {
   // Logic to update user details
   try {
     const { userId } = req.params;
-    const { name, email, role } = req.body;
+    const { name, email, role, rollNumber, yearOfStudy, department } = req.body;
 
     // Check if user exists
     const user = await UserModel.findById(userId);
@@ -193,7 +217,14 @@ export const UpdateUser = async (req, res) => {
     // Update user
     const updatedUser = await UserModel.findByIdAndUpdate(
       userId,
-      { name, email, role },
+      {
+        name,
+        email,
+        role,
+        rollNumber: role === "student" ? rollNumber : null,
+        yearOfStudy: role === "student" ? yearOfStudy : null,
+        department: role === "student" ? department : null,
+      },
       { new: true },
     );
 
