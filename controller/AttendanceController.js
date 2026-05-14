@@ -133,7 +133,13 @@ const getClassStudentIds = async ({ department, yearOfStudy }) => {
   return students.map((student) => student._id);
 };
 
-const getClassPeriodAttendance = async ({ department, yearOfStudy, date, period }) => {
+const getClassPeriodAttendance = async ({
+  department,
+  yearOfStudy,
+  semester,
+  date,
+  period,
+}) => {
   const classStudentIds = await getClassStudentIds({ department, yearOfStudy });
 
   if (classStudentIds.length === 0) {
@@ -144,6 +150,7 @@ const getClassPeriodAttendance = async ({ department, yearOfStudy, date, period 
 
   return AttendanceModel.findOne({
     studentId: { $in: classStudentIds },
+    semester,
     period: normalizePeriod(period),
     isDelete: false,
     date: { $gte: startDate, $lte: endDate },
@@ -152,12 +159,13 @@ const getClassPeriodAttendance = async ({ department, yearOfStudy, date, period 
 
 export const createAttendance = async (req, res) => {
   try {
-    const { studentId, staffId, subject, date, period, status, remarks } =
+    const { studentId, staffId, subject, semester, date, period, status, remarks } =
       req.body;
 
-    if (!studentId || !staffId || !subject || !date || !period) {
+    if (!studentId || !staffId || !subject || !semester || !date || !period) {
       return res.status(statusCodes.BAD_REQUEST).json({
-        message: "Student ID, Staff ID, Subject, Date, and Period are required",
+        message:
+          "Student ID, Staff ID, Subject, Semester, Date, and Period are required",
       });
     }
 
@@ -177,6 +185,7 @@ export const createAttendance = async (req, res) => {
 
     const existingAttendance = await getClassPeriodAttendance({
       ...studentClass,
+      semester,
       date,
       period,
     });
@@ -191,6 +200,7 @@ export const createAttendance = async (req, res) => {
       studentId,
       staffId,
       subject,
+      semester,
       date,
       period: normalizePeriod(period),
       status: status || "present",
@@ -223,15 +233,16 @@ export const createBatchAttendance = async (req, res) => {
     // Validate each record
     for (const record of attendanceRecords) {
       if (
-        !record.studentId ||
-        !record.staffId ||
-        !record.subject ||
-        !record.date ||
-        !record.period
+          !record.studentId ||
+          !record.staffId ||
+          !record.subject ||
+          !record.semester ||
+          !record.date ||
+          !record.period
       ) {
         return res.status(statusCodes.BAD_REQUEST).json({
           message:
-            "Each record must have studentId, staffId, subject, date, and period",
+            "Each record must have studentId, staffId, subject, semester, date, and period",
         });
       }
 
@@ -254,13 +265,14 @@ export const createBatchAttendance = async (req, res) => {
       }
 
       const dateKey = new Date(record.date).toISOString().split("T")[0];
-      const classKey = `${studentClass.department}|${studentClass.yearOfStudy}|${dateKey}|${normalizePeriod(record.period)}`;
+      const classKey = `${studentClass.department}|${studentClass.yearOfStudy}|${record.semester}|${dateKey}|${normalizePeriod(record.period)}`;
 
       if (classChecks.has(classKey)) {
         classChecks.get(classKey).subjects.add(record.subject);
       } else {
         classChecks.set(classKey, {
           ...studentClass,
+          semester: record.semester,
           date: record.date,
           period: record.period,
           subjects: new Set([record.subject]),
@@ -298,6 +310,7 @@ export const createBatchAttendance = async (req, res) => {
         studentId: record.studentId,
         staffId: record.staffId,
         subject: record.subject,
+        semester: record.semester,
         date: record.date,
         period: normalizePeriod(record.period),
         status: record.status || "present",
@@ -351,7 +364,7 @@ export const getAttendanceByStudent = async (req, res) => {
 export const getAttendanceByStaff = async (req, res) => {
   try {
     const { staffId } = req.params;
-    const { date, studentId, subject, period } = req.query;
+    const { date, studentId, subject, semester, period } = req.query;
 
     const filter = { staffId, isDelete: false };
 
@@ -370,6 +383,10 @@ export const getAttendanceByStaff = async (req, res) => {
 
     if (subject) {
       filter.subject = subject;
+    }
+
+    if (semester) {
+      filter.semester = semester;
     }
 
     if (period) {
@@ -521,6 +538,7 @@ export const getStudentDashboardAttendance = async (req, res) => {
         rollNumber: student.rollNumber,
         department: student.department,
         yearOfStudy: student.yearOfStudy,
+        semester: student.semester,
       },
       stats: getAttendanceSummary(attendance),
       subjectWiseAttendance: getSubjectWiseAttendance(attendance),

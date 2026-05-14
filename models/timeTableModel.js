@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 
 const Schema = mongoose.Schema;
+const PERIODS_PER_DAY = 7;
 
 // ⭐ Period Schema (1 hour)
 const periodSchema = new Schema({
@@ -25,7 +26,10 @@ const daySchema = new Schema({
   },
   periods: {
     type: [periodSchema],
-    validate: [(val) => val.length === 8, "Each day must have 8 periods"],
+    validate: [
+      (val) => val.length === PERIODS_PER_DAY,
+      `Each day must have ${PERIODS_PER_DAY} periods`,
+    ],
   },
 });
 

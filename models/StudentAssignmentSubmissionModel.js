@@ -18,6 +18,14 @@ const StudentAssignmentSubmissionSchema = new Schema(
       type: String,
       required: true,
     },
+    submissionFileName: {
+      type: String,
+      default: "",
+    },
+    submissionMimeType: {
+      type: String,
+      default: "application/pdf",
+    },
     submissionDate: {
       type: Date,
       default: Date.now,

@@ -1,4 +1,8 @@
 import TimeTableModel from "../models/timeTableModel.js";
+import UserModel from "../models/UsersModels.js";
+
+const MAX_SUBJECTS_PER_STAFF = 2;
+const PERIODS_PER_DAY = 7;
 
 export const getTimeTable = async (req, res) => {
   try {
@@ -119,7 +123,7 @@ export const getTimeTable = async (req, res) => {
 
 export const createTimeTable = async (req, res) => {
   try {
-    const { weekDays } = req.body;
+    const { weekDays, yearOfStudy, semester } = req.body;
 
     // Validate 5 days
     if (weekDays.length !== 5) {
@@ -128,11 +132,61 @@ export const createTimeTable = async (req, res) => {
       });
     }
 
-    // Validate 8 periods per day
+    // Validate 7 periods per day
     for (let day of weekDays) {
-      if (day.periods.length !== 8) {
+      if (day.periods.length !== PERIODS_PER_DAY) {
         return res.status(400).json({
-          message: `${day.day} must have 8 periods`,
+          message: `${day.day} must have ${PERIODS_PER_DAY} periods`,
+        });
+      }
+    }
+
+    const subjectsByStaff = new Map();
+    weekDays.forEach((day) => {
+      day.periods.forEach((period) => {
+        if (!period.staff || !period.subject) return;
+
+        if (!subjectsByStaff.has(period.staff)) {
+          subjectsByStaff.set(period.staff, new Set());
+        }
+
+        subjectsByStaff.get(period.staff).add(period.subject);
+      });
+    });
+
+    const staffMembers = await UserModel.find({
+      _id: { $in: [...subjectsByStaff.keys()] },
+      role: { $in: ["staff", "coordinator"] },
+      isDelete: false,
+    }).select("name assignedSubjects");
+    const staffById = new Map(
+      staffMembers.map((staff) => [staff._id.toString(), staff]),
+    );
+
+    for (const [staffId, subjectIds] of subjectsByStaff.entries()) {
+      const staff = staffById.get(staffId);
+
+      if (!staff) {
+        return res.status(400).json({
+          message: "Selected staff member is not available",
+        });
+      }
+
+      staff.assignedSubjects.forEach((assignedSubject) => {
+        if (
+          assignedSubject &&
+          assignedSubject.yearOfStudy === yearOfStudy &&
+          assignedSubject.semester === semester &&
+          assignedSubject.subject
+        ) {
+          subjectIds.add(assignedSubject.subject.toString());
+        }
+      });
+
+      if (subjectIds.size > MAX_SUBJECTS_PER_STAFF) {
+        return res.status(400).json({
+          message:
+            "A staff member can handle a maximum of 2 subjects per year and semester",
         });
       }
     }

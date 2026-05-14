@@ -8,6 +8,8 @@ import {
   SoftDeleteUser,
   RestoreUser,
   UpdateUser,
+  AssignSubjectToStaff,
+  UpdateAssignedSubjectForStaff,
 } from "../controller/UsersController.js";
 
 const router = express.Router();
@@ -21,5 +23,7 @@ router.post("/create-user", CreateUser);
 router.put("/soft-delete/:userId", SoftDeleteUser);
 router.put("/restore/:userId", RestoreUser);
 router.put("/update/:userId", UpdateUser);
+router.put("/staff/:userId/assign-subject", AssignSubjectToStaff);
+router.put("/staff/:userId/update-assigned-subject", UpdateAssignedSubjectForStaff);
 
 export default router;

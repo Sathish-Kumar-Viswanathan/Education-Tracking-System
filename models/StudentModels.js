@@ -2,6 +2,36 @@ import mongoose from "mongoose";
 
 const Schema = mongoose.Schema;
 
+const AcademicMarksSchema = new Schema(
+  {
+    subject: {
+      type: String,
+      required: true,
+    },
+    semester: {
+      type: String,
+      required: true,
+    },
+    internalOneMark: {
+      type: Number,
+      default: null,
+    },
+    internalTwoMark: {
+      type: Number,
+      default: null,
+    },
+    internalThreeMark: {
+      type: Number,
+      default: null,
+    },
+    semesterMark: {
+      type: Number,
+      default: null,
+    },
+  },
+  { _id: false },
+);
+
 const StudentSchema = new Schema(
   {
     userId: {
@@ -81,6 +111,11 @@ const StudentSchema = new Schema(
       required: true,
     },
 
+    semester: {
+      type: String,
+      default: "",
+    },
+
     address: {
       type: String,
       default: "",
@@ -91,14 +126,54 @@ const StudentSchema = new Schema(
       default: 0,
     },
 
+    tenthMarksheetUrl: {
+      type: String,
+      default: "",
+    },
+
     twelfthMarkPercentage: {
       type: Number,
       default: 0,
     },
 
+    twelfthMarksheetUrl: {
+      type: String,
+      default: "",
+    },
+
     ugMarkPercentage: {
       type: Number,
       default: 0,
+    },
+
+    ugMarksheetUrl: {
+      type: String,
+      default: "",
+    },
+
+    internalOneMark: {
+      type: Number,
+      default: null,
+    },
+
+    internalTwoMark: {
+      type: Number,
+      default: null,
+    },
+
+    internalThreeMark: {
+      type: Number,
+      default: null,
+    },
+
+    semesterMark: {
+      type: Number,
+      default: null,
+    },
+
+    academicMarks: {
+      type: [AcademicMarksSchema],
+      default: [],
     },
 
     isDelete: {

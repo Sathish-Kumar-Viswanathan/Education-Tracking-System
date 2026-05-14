@@ -18,6 +18,10 @@ const AttendanceSchema = new Schema(
       type: String,
       required: true,
     },
+    semester: {
+      type: String,
+      required: true,
+    },
     date: {
       type: Date,
       required: true,

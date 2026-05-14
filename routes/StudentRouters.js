@@ -12,6 +12,9 @@ import {
   getStudentAttendanceDetails,
   getStudentProfileByUserId,
   updateStudentProfileByUserId,
+  getStudentProfileUpdateRequests,
+  approveStudentProfileUpdateRequest,
+  rejectStudentProfileUpdateRequest,
 } from "../controller/StudentController.js";
 
 const Router = express.Router();
@@ -24,6 +27,15 @@ Router.post("/create-student", createStudent);
 Router.get("/user/:userId", getStudentByUserId);
 Router.get("/user/:userId/profile", getStudentProfileByUserId);
 Router.put("/user/:userId/profile", updateStudentProfileByUserId);
+Router.get("/profile-update-requests", getStudentProfileUpdateRequests);
+Router.put(
+  "/profile-update-requests/:requestId/approve",
+  approveStudentProfileUpdateRequest,
+);
+Router.put(
+  "/profile-update-requests/:requestId/reject",
+  rejectStudentProfileUpdateRequest,
+);
 
 Router.get("/:id", getStudentById);
 Router.put("/:id", updateStudent);

@@ -7,6 +7,14 @@ const subjectSchema = new mongoose.Schema(
       required: true,
       trim: true,
     },
+    yearOfStudy: {
+      type: String,
+      required: true,
+    },
+    semester: {
+      type: String,
+      required: true,
+    },
     isDelete: {
       type: Boolean,
       default: false,

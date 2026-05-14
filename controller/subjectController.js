@@ -1,13 +1,49 @@
 import Subject from "../models/subjectModels.js";
 import UserModel from "../models/UsersModels.js";
 
+const escapeRegex = (value = "") => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
 // Create a new subject
 export const CreateSubject = async (req, res) => {
   try {
-    const { name, createdBy } = req.body;
-    const subject = new Subject({ subjectName: name, createdBy });
+    const { name, createdBy, yearOfStudy, semester } = req.body;
+    const subjectName = String(name || "").trim();
+
+    if (!subjectName || !yearOfStudy || !semester) {
+      return res.status(400).json({
+        message: "Subject name, year, and semester are required",
+      });
+    }
+
+    const existingSubject = await Subject.findOne({
+      subjectName: new RegExp(`^${escapeRegex(subjectName)}$`, "i"),
+    });
+
+    if (existingSubject) {
+      existingSubject.yearOfStudy = yearOfStudy;
+      existingSubject.semester = semester;
+      existingSubject.isDelete = false;
+      await existingSubject.save();
+
+      return res.status(200).json({
+        message: "Subject already exists. Year and semester updated.",
+        subject: existingSubject,
+        updated: true,
+      });
+    }
+
+    const subject = new Subject({
+      subjectName,
+      yearOfStudy,
+      semester,
+      createdBy,
+    });
     await subject.save();
-    res.status(201).json(subject);
+    res.status(201).json({
+      message: "Subject created successfully",
+      subject,
+      updated: false,
+    });
   } catch (error) {
     res
       .status(500)
@@ -38,6 +74,8 @@ export const GetAllSubjects = async (req, res) => {
         $project: {
           _id: 1,
           subjectName: 1,
+          yearOfStudy: 1,
+          semester: 1,
           createdBy: 1,
           isDelete: 1, // Include isDelete field
           createdAt: 1,
@@ -99,11 +137,11 @@ export const RestoreSubject = async (req, res) => {
 export const UpdateSubject = async (req, res) => {
   try {
     const { id } = req.params;
-    const { name } = req.body;
+    const { name, yearOfStudy, semester } = req.body;
 
     const subject = await Subject.findByIdAndUpdate(
       id,
-      { subjectName: name },
+      { subjectName: name, yearOfStudy, semester },
       { new: true },
     );
 

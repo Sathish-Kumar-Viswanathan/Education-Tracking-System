@@ -3,8 +3,79 @@ import UserModel from "../models/UsersModels.js";
 import AttendanceModel from "../models/AttendanceModel.js";
 import AssignmentModel from "../models/AssignmentModel.js";
 import StudentAssignmentSubmissionModel from "../models/StudentAssignmentSubmissionModel.js";
+import StudentProfileUpdateRequestModel from "../models/StudentProfileUpdateRequestModel.js";
+import NotificationModel from "../models/NotificationModel.js";
 import { Messages } from "../utils/Messages.js";
 import { statusCodes } from "../utils/StatusCodes.js";
+import fs from "fs/promises";
+import path from "path";
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const marksheetUploadDir = path.join(__dirname, "..", "uploads", "marksheets");
+
+const sanitizeFileName = (fileName = "marksheet.pdf") =>
+  String(fileName)
+    .replace(/[^a-zA-Z0-9._-]/g, "_")
+    .replace(/_+/g, "_");
+
+const saveMarksheetPdf = async ({ studentId, fileDataUrl, fileName }) => {
+  if (!fileDataUrl?.startsWith("data:application/pdf;base64,")) {
+    return fileDataUrl;
+  }
+
+  await fs.mkdir(marksheetUploadDir, { recursive: true });
+
+  const base64Content = fileDataUrl.split(",")[1];
+  const fileBuffer = Buffer.from(base64Content, "base64");
+  const safeOriginalName = sanitizeFileName(fileName);
+  const storedFileName = `${studentId}-${Date.now()}-${safeOriginalName}`;
+  const filePath = path.join(marksheetUploadDir, storedFileName);
+
+  await fs.writeFile(filePath, fileBuffer);
+
+  return `/uploads/marksheets/${storedFileName}`;
+};
+
+const saveMarksheetPdfs = async (profileData, studentId) => {
+  const updateData = { ...profileData };
+  const marksheetFields = [
+    {
+      urlField: "tenthMarksheetUrl",
+      fileNameField: "tenthMarksheetFileName",
+      fallbackName: "10th-marksheet.pdf",
+    },
+    {
+      urlField: "twelfthMarksheetUrl",
+      fileNameField: "twelfthMarksheetFileName",
+      fallbackName: "12th-marksheet.pdf",
+    },
+    {
+      urlField: "ugMarksheetUrl",
+      fileNameField: "ugMarksheetFileName",
+      fallbackName: "ug-marksheet.pdf",
+    },
+  ];
+
+  for (const field of marksheetFields) {
+    if (updateData[field.urlField]) {
+      updateData[field.urlField] = await saveMarksheetPdf({
+        studentId,
+        fileDataUrl: updateData[field.urlField],
+        fileName: updateData[field.fileNameField] || field.fallbackName,
+      });
+    }
+
+    delete updateData[field.fileNameField];
+  }
+
+  Object.keys(updateData).forEach(
+    (key) => updateData[key] === undefined && delete updateData[key],
+  );
+
+  return updateData;
+};
 
 const splitName = (name = "") => {
   const [firstName = "", ...rest] = name.trim().split(/\s+/).filter(Boolean);
@@ -30,11 +101,20 @@ const buildStudentProfile = (student) => ({
   motherPhone: student.motherPhone,
   motherOccupation: student.motherOccupation,
   tenthMarkPercentage: student.tenthMarkPercentage,
+  tenthMarksheetUrl: student.tenthMarksheetUrl,
   twelfthMarkPercentage: student.twelfthMarkPercentage,
+  twelfthMarksheetUrl: student.twelfthMarksheetUrl,
   ugMarkPercentage: student.ugMarkPercentage,
+  ugMarksheetUrl: student.ugMarksheetUrl,
+  internalOneMark: student.internalOneMark,
+  internalTwoMark: student.internalTwoMark,
+  internalThreeMark: student.internalThreeMark,
+  semesterMark: student.semesterMark,
+  academicMarks: student.academicMarks || [],
   rollNumber: student.rollNumber,
   department: student.department,
   yearOfStudy: student.yearOfStudy,
+  semester: student.semester,
 });
 
 const buildUserBackedProfile = (user) => {
@@ -55,12 +135,37 @@ const buildUserBackedProfile = (user) => {
     motherPhone: "",
     motherOccupation: "",
     tenthMarkPercentage: 0,
+    tenthMarksheetUrl: "",
     twelfthMarkPercentage: 0,
+    twelfthMarksheetUrl: "",
     ugMarkPercentage: 0,
+    ugMarksheetUrl: "",
+    internalOneMark: null,
+    internalTwoMark: null,
+    internalThreeMark: null,
+    semesterMark: null,
+    academicMarks: [],
     rollNumber: user.rollNumber || "",
     department: user.department || "",
     yearOfStudy: user.yearOfStudy || "",
+    semester: "",
   };
+};
+
+const getLatestProfileUpdateRequest = async ({ studentId, userId }) => {
+  const filter = { isDelete: false };
+
+  if (studentId) {
+    filter.studentId = studentId;
+  } else if (userId) {
+    filter.userId = userId;
+  } else {
+    return null;
+  }
+
+  return StudentProfileUpdateRequestModel.findOne(filter)
+    .sort({ updatedAt: -1, createdAt: -1 })
+    .select("status rejectionReason reviewedAt createdAt updatedAt");
 };
 
 const cleanProfileUpdate = (profileData) => {
@@ -70,13 +175,19 @@ const cleanProfileUpdate = (profileData) => {
     updateData.dateOfBirth = null;
   }
 
-  ["tenthMarkPercentage", "twelfthMarkPercentage", "ugMarkPercentage"].forEach(
-    (field) => {
-      if (updateData[field] === "") {
-        updateData[field] = 0;
-      }
-    },
-  );
+  [
+    "tenthMarkPercentage",
+    "twelfthMarkPercentage",
+    "ugMarkPercentage",
+    "internalOneMark",
+    "internalTwoMark",
+    "internalThreeMark",
+    "semesterMark",
+  ].forEach((field) => {
+    if (updateData[field] === "") {
+      updateData[field] = field.includes("Percentage") ? 0 : null;
+    }
+  });
 
   Object.keys(updateData).forEach(
     (key) => updateData[key] === undefined && delete updateData[key],
@@ -105,9 +216,28 @@ export const createStudent = async (req, res) => {
       address,
       userId,
       tenthMarkPercentage,
+      tenthMarksheetUrl,
+      tenthMarksheetFileName,
       twelfthMarkPercentage,
+      twelfthMarksheetUrl,
+      twelfthMarksheetFileName,
       ugMarkPercentage,
+      ugMarksheetUrl,
+      ugMarksheetFileName,
+      semester,
     } = req.body;
+
+    const marksheetData = await saveMarksheetPdfs(
+      {
+        tenthMarksheetUrl,
+        tenthMarksheetFileName,
+        twelfthMarksheetUrl,
+        twelfthMarksheetFileName,
+        ugMarksheetUrl,
+        ugMarksheetFileName,
+      },
+      userId || rollNumber,
+    );
 
     const newStudent = await StudentModel.create({
       firstName,
@@ -127,8 +257,11 @@ export const createStudent = async (req, res) => {
       address,
       userId,
       tenthMarkPercentage: tenthMarkPercentage || 0,
+      tenthMarksheetUrl: marksheetData.tenthMarksheetUrl || "",
       twelfthMarkPercentage: twelfthMarkPercentage || 0,
+      twelfthMarksheetUrl: marksheetData.twelfthMarksheetUrl || "",
       ugMarkPercentage: ugMarkPercentage || 0,
+      ugMarksheetUrl: marksheetData.ugMarksheetUrl || "",
     });
 
     res.status(statusCodes.CREATED).json({
@@ -213,10 +346,22 @@ export const updateStudent = async (req, res) => {
       rollNumber,
       department,
       yearOfStudy,
+      semester,
       address,
       tenthMarkPercentage,
+      tenthMarksheetUrl,
+      tenthMarksheetFileName,
       twelfthMarkPercentage,
+      twelfthMarksheetUrl,
+      twelfthMarksheetFileName,
       ugMarkPercentage,
+      ugMarksheetUrl,
+      ugMarksheetFileName,
+      internalOneMark,
+      internalTwoMark,
+      internalThreeMark,
+      semesterMark,
+      subject,
     } = req.body;
 
     const updateData = {};
@@ -234,6 +379,7 @@ export const updateStudent = async (req, res) => {
     if (rollNumber) updateData.rollNumber = rollNumber;
     if (department) updateData.department = department;
     if (yearOfStudy) updateData.yearOfStudy = yearOfStudy;
+    if (semester) updateData.semester = semester;
     if (address) updateData.address = address;
     if (tenthMarkPercentage !== undefined)
       updateData.tenthMarkPercentage = tenthMarkPercentage;
@@ -241,6 +387,100 @@ export const updateStudent = async (req, res) => {
       updateData.twelfthMarkPercentage = twelfthMarkPercentage;
     if (ugMarkPercentage !== undefined)
       updateData.ugMarkPercentage = ugMarkPercentage;
+    const hasAcademicMarks = [
+      internalOneMark,
+      internalTwoMark,
+      internalThreeMark,
+      semesterMark,
+    ].some((mark) => mark !== undefined);
+
+    if (internalOneMark !== undefined)
+      updateData.internalOneMark = internalOneMark;
+    if (internalTwoMark !== undefined)
+      updateData.internalTwoMark = internalTwoMark;
+    if (internalThreeMark !== undefined)
+      updateData.internalThreeMark = internalThreeMark;
+    if (semesterMark !== undefined) updateData.semesterMark = semesterMark;
+
+    if (
+      [internalOneMark, internalTwoMark, internalThreeMark].some(
+        (mark) =>
+          mark !== undefined &&
+          mark !== null &&
+          (Number(mark) < 0 || Number(mark) > 50),
+      )
+    ) {
+      return res.status(statusCodes.BAD_REQUEST).json({
+        message: "Internal marks must be between 0 and 50",
+      });
+    }
+
+    if (
+      semesterMark !== undefined &&
+      semesterMark !== null &&
+      (Number(semesterMark) < 0 || Number(semesterMark) > 100)
+    ) {
+      return res.status(statusCodes.BAD_REQUEST).json({
+        message: "Semester mark must be between 0 and 100",
+      });
+    }
+
+    Object.assign(
+      updateData,
+      await saveMarksheetPdfs(
+        {
+          tenthMarksheetUrl,
+          tenthMarksheetFileName,
+          twelfthMarksheetUrl,
+          twelfthMarksheetFileName,
+          ugMarksheetUrl,
+          ugMarksheetFileName,
+        },
+        id,
+      ),
+    );
+
+    if (hasAcademicMarks && subject && semester) {
+      const student = await StudentModel.findById(id);
+
+      if (!student) {
+        return res
+          .status(statusCodes.NOT_FOUND)
+          .json({ message: "Student not found" });
+      }
+
+      const academicMarks = [...(student.academicMarks || [])];
+      const existingMarkIndex = academicMarks.findIndex(
+        (mark) => mark.subject === subject && mark.semester === semester,
+      );
+      const markEntry = {
+        subject,
+        semester,
+        internalOneMark:
+          internalOneMark !== undefined
+            ? internalOneMark
+            : academicMarks[existingMarkIndex]?.internalOneMark ?? null,
+        internalTwoMark:
+          internalTwoMark !== undefined
+            ? internalTwoMark
+            : academicMarks[existingMarkIndex]?.internalTwoMark ?? null,
+        internalThreeMark:
+          internalThreeMark !== undefined
+            ? internalThreeMark
+            : academicMarks[existingMarkIndex]?.internalThreeMark ?? null,
+        semesterMark:
+          semesterMark !== undefined
+            ? semesterMark
+            : academicMarks[existingMarkIndex]?.semesterMark ?? null,
+      };
+
+      updateData.academicMarks = [
+        ...academicMarks.filter(
+          (mark) => mark.subject !== subject || mark.semester !== semester,
+        ),
+        markEntry,
+      ];
+    }
 
     const updatedStudent = await StudentModel.findByIdAndUpdate(
       id,
@@ -404,13 +644,22 @@ export const getStudentProfile = async (req, res) => {
 
       // Education details
       tenthMarkPercentage: student.tenthMarkPercentage,
+      tenthMarksheetUrl: student.tenthMarksheetUrl,
       twelfthMarkPercentage: student.twelfthMarkPercentage,
+      twelfthMarksheetUrl: student.twelfthMarksheetUrl,
       ugMarkPercentage: student.ugMarkPercentage,
+      ugMarksheetUrl: student.ugMarksheetUrl,
+      internalOneMark: student.internalOneMark,
+      internalTwoMark: student.internalTwoMark,
+      internalThreeMark: student.internalThreeMark,
+      semesterMark: student.semesterMark,
+      academicMarks: student.academicMarks || [],
 
       // Academic info
       rollNumber: student.rollNumber,
       department: student.department,
       yearOfStudy: student.yearOfStudy,
+      semester: student.semester,
     };
 
     res.status(statusCodes.SUCCESS).json({
@@ -442,27 +691,46 @@ export const updateStudentProfile = async (req, res) => {
       motherPhone,
       motherOccupation,
       tenthMarkPercentage,
+      tenthMarksheetUrl,
+      tenthMarksheetFileName,
       twelfthMarkPercentage,
+      twelfthMarksheetUrl,
+      twelfthMarksheetFileName,
       ugMarkPercentage,
+      ugMarksheetUrl,
+      ugMarksheetFileName,
+      rollNumber,
+      department,
+      yearOfStudy,
+      semester,
     } = req.body;
 
-    const updateData = cleanProfileUpdate({
-      firstName,
-      lastName,
-      dateOfBirth,
-      email,
-      phoneNumber,
-      address,
-      fatherName,
-      fatherPhone,
-      fatherOccupation,
-      motherName,
-      motherPhone,
-      motherOccupation,
-      tenthMarkPercentage,
-      twelfthMarkPercentage,
-      ugMarkPercentage,
-    });
+    const updateData = await saveMarksheetPdfs(
+      cleanProfileUpdate({
+        firstName,
+        lastName,
+        dateOfBirth,
+        email,
+        phoneNumber,
+        address,
+        fatherName,
+        fatherPhone,
+        fatherOccupation,
+        motherName,
+        motherPhone,
+        motherOccupation,
+        tenthMarkPercentage,
+        tenthMarksheetUrl,
+        tenthMarksheetFileName,
+        twelfthMarkPercentage,
+        twelfthMarksheetUrl,
+        twelfthMarksheetFileName,
+        ugMarkPercentage,
+        ugMarksheetUrl,
+        ugMarksheetFileName,
+      }),
+      studentId,
+    );
 
     const updatedStudent = await StudentModel.findByIdAndUpdate(
       studentId,
@@ -627,11 +895,20 @@ export const getStudentProfileByUserId = async (req, res) => {
             motherPhone: "",
             motherOccupation: "",
             tenthMarkPercentage: 0,
+            tenthMarksheetUrl: "",
             twelfthMarkPercentage: 0,
+            twelfthMarksheetUrl: "",
             ugMarkPercentage: 0,
+            ugMarksheetUrl: "",
+            internalOneMark: null,
+            internalTwoMark: null,
+            internalThreeMark: null,
+            semesterMark: null,
+            academicMarks: [],
             rollNumber: "",
             department: "",
             yearOfStudy: "",
+            semester: "",
           },
         });
       }
@@ -639,12 +916,16 @@ export const getStudentProfileByUserId = async (req, res) => {
       return res.status(statusCodes.SUCCESS).json({
         message: "Student profile retrieved successfully",
         profile: buildUserBackedProfile(user),
+        profileUpdateRequest: await getLatestProfileUpdateRequest({ userId }),
       });
     }
 
     res.status(statusCodes.SUCCESS).json({
       message: "Student profile retrieved successfully",
       profile: buildStudentProfile(student),
+      profileUpdateRequest: await getLatestProfileUpdateRequest({
+        studentId: student._id,
+      }),
     });
   } catch (error) {
     res
@@ -671,8 +952,18 @@ export const updateStudentProfileByUserId = async (req, res) => {
       motherPhone,
       motherOccupation,
       tenthMarkPercentage,
+      tenthMarksheetUrl,
+      tenthMarksheetFileName,
       twelfthMarkPercentage,
+      twelfthMarksheetUrl,
+      twelfthMarksheetFileName,
       ugMarkPercentage,
+      ugMarksheetUrl,
+      ugMarksheetFileName,
+      rollNumber,
+      department,
+      yearOfStudy,
+      semester,
     } = req.body;
 
     let student = await StudentModel.findOne({
@@ -699,10 +990,19 @@ export const updateStudentProfileByUserId = async (req, res) => {
           .json({ message: "Student profile not found" });
       }
 
-      const nameParts = splitName(user.name);
+      const studentRollNumber = user.rollNumber || rollNumber;
+      const studentDepartment = user.department || department;
+      const studentYearOfStudy = user.yearOfStudy || yearOfStudy;
+
+      if (!studentRollNumber || !studentDepartment || !studentYearOfStudy) {
+        return res.status(statusCodes.BAD_REQUEST).json({
+          message:
+            "Student account is missing roll number, department, or year of study",
+        });
+      }
 
       student = await StudentModel.findOne({
-        rollNumber: user.rollNumber,
+        rollNumber: studentRollNumber,
         isDelete: false,
       });
 
@@ -710,61 +1010,238 @@ export const updateStudentProfileByUserId = async (req, res) => {
         student.userId = userId;
         await student.save();
       } else {
+        const accountNameParts = splitName(user.name);
+
         student = await StudentModel.create({
           userId,
-          firstName: firstName ?? nameParts.firstName,
-          lastName: lastName ?? nameParts.lastName,
-          dateOfBirth: dateOfBirth || null,
-          email: email ?? user.email,
-          phoneNumber: phoneNumber ?? "",
-          address: address ?? "",
-          fatherName: fatherName ?? "",
-          fatherPhone: fatherPhone ?? "",
-          fatherOccupation: fatherOccupation ?? "",
-          motherName: motherName ?? "",
-          motherPhone: motherPhone ?? "",
-          motherOccupation: motherOccupation ?? "",
-          tenthMarkPercentage: tenthMarkPercentage ?? 0,
-          twelfthMarkPercentage: twelfthMarkPercentage ?? 0,
-          ugMarkPercentage: ugMarkPercentage ?? 0,
-          rollNumber: user.rollNumber,
-          department: user.department,
-          yearOfStudy: user.yearOfStudy,
+          firstName: accountNameParts.firstName,
+          lastName: accountNameParts.lastName,
+          dateOfBirth: null,
+          email: user.email,
+          phoneNumber: "",
+          address: "",
+          fatherName: "",
+          fatherPhone: "",
+          fatherOccupation: "",
+          motherName: "",
+          motherPhone: "",
+          motherOccupation: "",
+          tenthMarkPercentage: 0,
+          tenthMarksheetUrl: "",
+          twelfthMarkPercentage: 0,
+          twelfthMarksheetUrl: "",
+          ugMarkPercentage: 0,
+          ugMarksheetUrl: "",
+          rollNumber: studentRollNumber,
+          department: studentDepartment,
+          yearOfStudy: studentYearOfStudy,
+          semester: semester ?? "",
         });
       }
     }
 
-    const updateData = cleanProfileUpdate({
-      firstName,
-      lastName,
-      dateOfBirth,
-      email,
-      phoneNumber,
-      address,
-      fatherName,
-      fatherPhone,
-      fatherOccupation,
-      motherName,
-      motherPhone,
-      motherOccupation,
-      tenthMarkPercentage,
-      twelfthMarkPercentage,
-      ugMarkPercentage,
+    const updateData = await saveMarksheetPdfs(
+      cleanProfileUpdate({
+        firstName,
+        lastName,
+        dateOfBirth,
+        email,
+        phoneNumber,
+        address,
+        fatherName,
+        fatherPhone,
+        fatherOccupation,
+        motherName,
+        motherPhone,
+        motherOccupation,
+        tenthMarkPercentage,
+        tenthMarksheetUrl,
+        tenthMarksheetFileName,
+        twelfthMarkPercentage,
+        twelfthMarksheetUrl,
+        twelfthMarksheetFileName,
+        ugMarkPercentage,
+        ugMarksheetUrl,
+        ugMarksheetFileName,
+      }),
+      student._id,
+    );
+
+    const profileRequest =
+      await StudentProfileUpdateRequestModel.findOneAndUpdate(
+        {
+          studentId: student._id,
+          status: "pending",
+          isDelete: false,
+        },
+        {
+          studentId: student._id,
+          userId,
+          requestedProfile: updateData,
+          status: "pending",
+          reviewedBy: null,
+          reviewedAt: null,
+          rejectionReason: "",
+        },
+        {
+          new: true,
+          upsert: true,
+          runValidators: true,
+        },
+      );
+
+    res.status(statusCodes.SUCCESS).json({
+      message: "Profile update request sent to admin for approval",
+      request: profileRequest,
+      profile: buildStudentProfile(student),
+    });
+  } catch (error) {
+    if (error.code === 11000) {
+      return res.status(statusCodes.CONFLICT).json({
+        message: "Student profile already exists for this roll number",
+      });
+    }
+
+    if (error.name === "ValidationError") {
+      return res.status(statusCodes.BAD_REQUEST).json({
+        message: error.message,
+      });
+    }
+
+    res
+      .status(statusCodes.INTERNAL_SERVER_ERROR)
+      .json({
+        message: "Error requesting student profile update",
+        error: error.message,
+      });
+  }
+};
+
+export const getStudentProfileUpdateRequests = async (req, res) => {
+  try {
+    const { status = "pending" } = req.query;
+    const filter = { isDelete: false };
+
+    if (status !== "all") {
+      filter.status = status;
+    }
+
+    const requests = await StudentProfileUpdateRequestModel.find(filter)
+      .populate("studentId", "firstName lastName rollNumber department yearOfStudy")
+      .populate("userId", "name email")
+      .sort({ createdAt: -1 });
+
+    res.status(statusCodes.SUCCESS).json({
+      message: "Profile update requests retrieved successfully",
+      requests,
+      count: requests.length,
+    });
+  } catch (error) {
+    res.status(statusCodes.INTERNAL_SERVER_ERROR).json({
+      message: "Error retrieving profile update requests",
+      error,
+    });
+  }
+};
+
+export const approveStudentProfileUpdateRequest = async (req, res) => {
+  try {
+    const { requestId } = req.params;
+    const { adminId } = req.body;
+
+    if (!requestId) {
+      return res
+        .status(statusCodes.BAD_REQUEST)
+        .json({ message: "Request ID is required" });
+    }
+
+    const profileRequest = await StudentProfileUpdateRequestModel.findOne({
+      _id: requestId,
+      status: "pending",
+      isDelete: false,
     });
 
+    if (!profileRequest) {
+      return res
+        .status(statusCodes.NOT_FOUND)
+        .json({ message: "Pending profile request not found" });
+    }
+
     const updatedStudent = await StudentModel.findByIdAndUpdate(
-      student._id,
-      updateData,
+      profileRequest.studentId,
+      profileRequest.requestedProfile,
       { new: true },
     );
+
+    profileRequest.status = "approved";
+    profileRequest.reviewedBy = adminId || null;
+    profileRequest.reviewedAt = new Date();
+    await profileRequest.save();
+
+    await NotificationModel.create({
+      title: "Profile Update Approved",
+      message: "Your profile update request has been approved by admin.",
+      type: "general",
+      targetRole: "student",
+      studentId: profileRequest.studentId,
+      userId: profileRequest.userId,
+    });
 
     res.status(statusCodes.SUCCESS).json({
       message: "Student profile updated successfully",
       profile: buildStudentProfile(updatedStudent),
+      request: profileRequest,
     });
   } catch (error) {
-    res
-      .status(statusCodes.INTERNAL_SERVER_ERROR)
-      .json({ message: "Error updating student profile", error });
+    res.status(statusCodes.INTERNAL_SERVER_ERROR).json({
+      message: "Error approving profile update request",
+      error,
+    });
+  }
+};
+
+export const rejectStudentProfileUpdateRequest = async (req, res) => {
+  try {
+    const { requestId } = req.params;
+    const { adminId, rejectionReason } = req.body;
+
+    const profileRequest = await StudentProfileUpdateRequestModel.findOne({
+      _id: requestId,
+      status: "pending",
+      isDelete: false,
+    });
+
+    if (!profileRequest) {
+      return res
+        .status(statusCodes.NOT_FOUND)
+        .json({ message: "Pending profile request not found" });
+    }
+
+    profileRequest.status = "rejected";
+    profileRequest.reviewedBy = adminId || null;
+    profileRequest.reviewedAt = new Date();
+    profileRequest.rejectionReason = rejectionReason || "";
+    await profileRequest.save();
+
+    await NotificationModel.create({
+      title: "Profile Update Rejected",
+      message: rejectionReason
+        ? `Your profile update request was rejected. Reason: ${rejectionReason}`
+        : "Your profile update request was rejected by admin.",
+      type: "general",
+      targetRole: "student",
+      studentId: profileRequest.studentId,
+      userId: profileRequest.userId,
+    });
+
+    res.status(statusCodes.SUCCESS).json({
+      message: "Profile update request rejected",
+      request: profileRequest,
+    });
+  } catch (error) {
+    res.status(statusCodes.INTERNAL_SERVER_ERROR).json({
+      message: "Error rejecting profile update request",
+      error,
+    });
   }
 };
